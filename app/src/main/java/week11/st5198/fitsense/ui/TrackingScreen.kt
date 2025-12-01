@@ -52,11 +52,13 @@ fun TrackingScreen(nav: NavHostController) {
     var duration by remember { mutableStateOf(0L) }
     var distance by remember { mutableStateOf(0f) }
     var calories by remember { mutableStateOf(0f) }
+    var speed by remember { mutableStateOf(0f) }
+
+    var pauseCount by remember { mutableStateOf(0) }
+    var wasMoving by remember { mutableStateOf(false) }
 
     var screenOff by remember { mutableStateOf(false) }
     var showEndWorkoutOptions by remember { mutableStateOf(false) }
-
-    var speed by remember { mutableStateOf(0f) }
 
     val db = FirebaseFirestore.getInstance()
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -72,6 +74,7 @@ fun TrackingScreen(nav: NavHostController) {
                 }
             }
         }
+
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
@@ -79,7 +82,11 @@ fun TrackingScreen(nav: NavHostController) {
         if (isTracking && permission.status.isGranted) {
             stepDetectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
             if (stepDetectorSensor != null) {
-                sensorManager.registerListener(stepListener, stepDetectorSensor, SensorManager.SENSOR_DELAY_FASTEST)
+                sensorManager.registerListener(
+                    stepListener,
+                    stepDetectorSensor,
+                    SensorManager.SENSOR_DELAY_FASTEST
+                )
             } else {
                 Toast.makeText(context, "No Step Detector Sensor found!", Toast.LENGTH_SHORT).show()
             }
@@ -92,12 +99,19 @@ fun TrackingScreen(nav: NavHostController) {
         while (isTracking) {
             delay(1000)
             val moving = steps > lastStepCount
+
+            if (wasMoving && !moving) {
+                pauseCount += 1
+            }
+            wasMoving = moving
+
             if (moving) {
                 duration += 1000
                 distance = steps * 0.0008f
                 calories = steps * 0.04f
                 speed = if (duration > 0) (distance / (duration / 3600000f)) else 0f
             }
+
             lastStepCount = steps
         }
     }
@@ -148,27 +162,53 @@ fun TrackingScreen(nav: NavHostController) {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Default.DirectionsWalk, contentDescription = "Steps", tint = Color(0xFFFFA726), modifier = Modifier.size(48.dp))
+                    Icon(
+                        Icons.Default.DirectionsWalk,
+                        contentDescription = "Steps",
+                        tint = Color(0xFFFFA726),
+                        modifier = Modifier.size(48.dp)
+                    )
                     Spacer(Modifier.height(8.dp))
-                    Text(text = "$steps", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFA726))
-                    Text(text = "Steps", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFFFA726))
+                    Text(
+                        text = "$steps",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFA726)
+                    )
+                    Text(
+                        text = "Steps",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFFFA726)
+                    )
                 }
             }
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 Card(
                     modifier = Modifier.weight(1f),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Timer, contentDescription = "Duration", tint = Color.Black)
                             Spacer(Modifier.width(4.dp))
                             Text("Duration", fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Spacer(Modifier.height(4.dp))
-                        Text(formatDuration(duration), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(
+                            formatDuration(duration),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
                 }
 
@@ -177,47 +217,76 @@ fun TrackingScreen(nav: NavHostController) {
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.DirectionsRun, contentDescription = "Distance", tint = Color.Black)
                             Spacer(Modifier.width(4.dp))
                             Text("Distance", fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Spacer(Modifier.height(4.dp))
-                        Text(String.format("%.2f km", distance), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(
+                            String.format("%.2f km", distance),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
                 }
             }
 
-            Card(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DirectionsRun, contentDescription = "Speed", tint = Color.Black)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Speed", fontWeight = FontWeight.Bold, color = Color.Black)
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.DirectionsRun, contentDescription = "Speed", tint = Color.Black)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Speed", fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            String.format("%.2f km/h", speed),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(String.format("%.2f km/h", speed), color = Color.Black, fontWeight = FontWeight.SemiBold)
                 }
-            }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocalFireDepartment, contentDescription = "Calories", tint = Color.Black)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Calories Burned", fontWeight = FontWeight.Bold, color = Color.Black)
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocalFireDepartment, contentDescription = "Calories", tint = Color.Black)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Calories", fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            String.format("%.2f kcal", calories),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text(String.format("%.2f kcal", calories), color = Color.Black, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -239,6 +308,8 @@ fun TrackingScreen(nav: NavHostController) {
                         color = if (paused) Color.Red else Color(0xFF1DB954),
                         fontWeight = FontWeight.SemiBold
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text("Pauses: $pauseCount", fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -253,7 +324,10 @@ fun TrackingScreen(nav: NavHostController) {
                     Text("End Workout", color = Color.White, fontSize = 20.sp)
                 }
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Button(
                         onClick = {
                             if (userId != null) {
@@ -263,6 +337,7 @@ fun TrackingScreen(nav: NavHostController) {
                                     "distance" to distance,
                                     "calories" to calories,
                                     "speed" to speed,
+                                    "pauseCount" to pauseCount,
                                     "timestamp" to System.currentTimeMillis()
                                 )
                                 db.collection("users").document(userId).collection("workouts").add(workout)
@@ -273,6 +348,8 @@ fun TrackingScreen(nav: NavHostController) {
                             distance = 0f
                             calories = 0f
                             speed = 0f
+                            pauseCount = 0
+                            wasMoving = false
                             isTracking = false
                             showEndWorkoutOptions = false
                             nav.navigate("history")
@@ -291,6 +368,8 @@ fun TrackingScreen(nav: NavHostController) {
                             distance = 0f
                             calories = 0f
                             speed = 0f
+                            pauseCount = 0
+                            wasMoving = false
                             isTracking = false
                             showEndWorkoutOptions = false
                             nav.navigate("home") { popUpTo("tracking") { inclusive = true } }
@@ -306,4 +385,3 @@ fun TrackingScreen(nav: NavHostController) {
         }
     }
 }
-
