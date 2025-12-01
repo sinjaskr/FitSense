@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1046316914958",
+    "project_id": "fitsense-4a9d2",
+    "storage_bucket": "fitsense-4a9d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1046316914958:android:90bfa047cde04047691f5f",
+        "android_client_info": {
+          "package_name": "week11.st5198.fitsense"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLx7KGzivegMmPMEACy78KuYXwgkPtSXc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
